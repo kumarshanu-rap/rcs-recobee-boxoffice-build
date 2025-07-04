@@ -1,25 +1,30 @@
+import io
 import os
+import tarfile
+
 import boto3
-import io, tarfile
 import sagemaker
 import sagemaker.session
+from sagemaker import image_uris
 from sagemaker.inputs import TrainingInput
+from sagemaker.model import Model
 from sagemaker.model_metrics import MetricsSource, ModelMetrics
 from sagemaker.processing import ProcessingInput, ProcessingOutput, ScriptProcessor
-from sagemaker.workflow.functions import JsonGet
-from sagemaker.workflow.parameters import ParameterInteger, ParameterString, ParameterFloat
+from sagemaker.sklearn.estimator import SKLearn
+from sagemaker.tensorflow import TensorFlow
+from sagemaker.workflow.condition_step import ConditionStep
+from sagemaker.workflow.conditions import ConditionLessThanOrEqualTo
+from sagemaker.workflow.fail_step import FailStep
+from sagemaker.workflow.functions import Join, JsonGet
+from sagemaker.workflow.parameters import (
+    ParameterFloat,
+    ParameterInteger,
+    ParameterString,
+)
 from sagemaker.workflow.pipeline import Pipeline
 from sagemaker.workflow.properties import PropertyFile
 from sagemaker.workflow.step_collections import RegisterModel
 from sagemaker.workflow.steps import ProcessingStep, TrainingStep
-from sagemaker import image_uris
-from sagemaker.model import Model
-from sagemaker.tensorflow import TensorFlow
-from sagemaker.workflow.fail_step import FailStep
-from sagemaker.workflow.functions import Join
-from sagemaker.workflow.conditions import ConditionLessThanOrEqualTo
-from sagemaker.workflow.condition_step import ConditionStep
-from sagemaker.sklearn.estimator import SKLearn
 
 BASE_DIR = os.path.dirname(os.path.realpath(__file__))
 

@@ -1,26 +1,39 @@
-import pandas as pd
-import numpy as np
-import logging
-import joblib, sklearn
 import argparse
-import os, io, json, sys
+import io
+import json
+import logging
+import os
+import sys
+
+import joblib
+import numpy as np
+import pandas as pd
+import sklearn
 from sklearn.ensemble import RandomForestRegressor
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.preprocessing import LabelEncoder
-from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 
 # Setup logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
+
 
 # ------------------ SageMaker Inference Functions ------------------
 def model_fn(model_dir):
     model = joblib.load(os.path.join(model_dir, "model.joblib"))
     le_storetype = joblib.load(os.path.join(model_dir, "le_storetype.joblib"))
     le_assortment = joblib.load(os.path.join(model_dir, "le_assortment.joblib"))
-    return {"model": model, "le_storetype": le_storetype, "le_assortment": le_assortment}
+    return {
+        "model": model,
+        "le_storetype": le_storetype,
+        "le_assortment": le_assortment,
+    }
 
-def input_fn(request_body, content_type='text/csv'):
-    if content_type == 'text/csv':
+
+def input_fn(request_body, content_type="text/csv"):
+    if content_type == "text/csv":
         df = pd.read_csv(io.StringIO(request_body))
         logger.info(f"Got the DF with Shape: {df.shape}, Columns: {df.columns}")
 
@@ -28,29 +41,44 @@ def input_fn(request_body, content_type='text/csv'):
         le_storetype = joblib.load("/opt/ml/model/le_storetype.joblib")
         le_assortment = joblib.load("/opt/ml/model/le_assortment.joblib")
 
-        df['StoreType'] = le_storetype.transform(df['StoreType'])
-        df['Assortment'] = le_assortment.transform(df['Assortment'])
+        df["StoreType"] = le_storetype.transform(df["StoreType"])
+        df["Assortment"] = le_assortment.transform(df["Assortment"])
 
-        df.sort_values(['Store', 'Date'], inplace=True)
-        df['Sales_Lag1'] = df.groupby('Store')['Sales'].shift(1)
-        df['Sales_MA7'] = df.groupby('Store')['Sales'].transform(lambda x: x.shift(1).rolling(7).mean())
-        df['Sales_MA30'] = df.groupby('Store')['Sales'].transform(lambda x: x.shift(1).rolling(30).mean())
+        df.sort_values(["Store", "Date"], inplace=True)
+        df["Sales_Lag1"] = df.groupby("Store")["Sales"].shift(1)
+        df["Sales_MA7"] = df.groupby("Store")["Sales"].transform(
+            lambda x: x.shift(1).rolling(7).mean()
+        )
+        df["Sales_MA30"] = df.groupby("Store")["Sales"].transform(
+            lambda x: x.shift(1).rolling(30).mean()
+        )
 
         logger.info("Handling missing values dynamically...")
         for col in df.columns:
             if df[col].isnull().sum() > 0:
-                if df[col].dtype in ['float64', 'int64']:
+                if df[col].dtype in ["float64", "int64"]:
                     df[col].fillna(df[col].median(), inplace=True)
                 else:
                     df[col].fillna(df[col].mode()[0], inplace=True)
-        df.fillna(method='ffill', inplace=True)
+        df.fillna(method="ffill", inplace=True)
         df.fillna(0, inplace=True)
-        features = ['Store', 'DayOfWeek', 'Month', 'Year', 'StoreType', 'Assortment', 'Sales_Lag1', 'Sales_MA7', 'Sales_MA30']
+        features = [
+            "Store",
+            "DayOfWeek",
+            "Month",
+            "Year",
+            "StoreType",
+            "Assortment",
+            "Sales_Lag1",
+            "Sales_MA7",
+            "Sales_MA30",
+        ]
         df = df[features]
         logger.info(f"Inference model with Columns({len(df.columns)}): {df.columns}")
         return df
     else:
         raise ValueError(f"Unsupported content type: {content_type}")
+
 
 def predict_fn(input_data, model_artifacts):
     model = model_artifacts["model"]
@@ -59,21 +87,22 @@ def predict_fn(input_data, model_artifacts):
     logger.info(f"Prediction: {prediction}")
     return prediction
 
-def output_fn(prediction, accept='application/json'):
-    if accept == 'application/json':
+
+def output_fn(prediction, accept="application/json"):
+    if accept == "application/json":
         return json.dumps(prediction.tolist())
     else:
         raise ValueError(f"Unsupported accept type: {accept}")
+
 
 # ------------------ Main Training Script ------------------
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--model-dir', type=str, default=os.environ.get('SM_MODEL_DIR'))
-    parser.add_argument('--train', type=str, default=os.environ.get('SM_CHANNEL_TRAIN'))
-    parser.add_argument('--train_file', type=str, default="Final_Features.csv")
-    parser.add_argument('--n_estimator', type=int, default=15)
-
+    parser.add_argument("--model-dir", type=str, default=os.environ.get("SM_MODEL_DIR"))
+    parser.add_argument("--train", type=str, default=os.environ.get("SM_CHANNEL_TRAIN"))
+    parser.add_argument("--train_file", type=str, default="Final_Features.csv")
+    parser.add_argument("--n_estimator", type=int, default=15)
 
     args = parser.parse_args()
 
@@ -84,10 +113,10 @@ if __name__ == "__main__":
 
     logger.info("Loading datasets...")
     data = pd.read_csv(os.path.join(args.train, args.train_file))
-    
+
     logger.info(f"Data shape: {data.shape}")
     logger.info(f"Data columns: {data.columns}")
-    
+
     logger.info("ML Model building.....")
 
     le_storetype = LabelEncoder()
