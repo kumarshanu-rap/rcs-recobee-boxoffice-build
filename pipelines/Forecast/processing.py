@@ -1,7 +1,7 @@
 import argparse
 import logging
 import os
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from io import StringIO
 
 import boto3
@@ -21,7 +21,7 @@ cols_to_drop = ["Unnamed: 12", "Nandesh_Master_Data", "recobee_id", "imdb_id"]
 
 
 def count_by_year(df, year=1):
-    today = datetime.now(tz=timezone.utc)
+    today = datetime.now()
     year_ago = today - timedelta(days=365 * year)
     count = df[(df["release_date"] >= year_ago) & (df["release_date"] <= today)].shape[
         0
@@ -248,7 +248,7 @@ if __name__ == "__main__":
     bucket_name, train_file_key = args.train_s3_uri.replace("s3://", "").split("/", 1)
     train_response = s3.get_object(Bucket=bucket_name, Key=train_file_key)
     train_file_content = train_response["Body"].read().decode("utf-8")
-    train_df = pd.read_csv(StringIO(train_file_content), parse_dates=["Date"])
+    train_df = pd.read_csv(StringIO(train_file_content))
 
     # Processing the data
     logger.info("Processing the data.")
