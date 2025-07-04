@@ -225,10 +225,12 @@ if __name__ == "__main__":
 
     test_accuracy = accuracy_score(y_test, y_pred)
     logger.info("Best Model Test Accuracy: %s", str(test_accuracy))
+    X_test[target_var] = y_test
+    test_data = pd.DataFrame(X_test)
 
     os.makedirs(args.model_dir, exist_ok=True)
     joblib.dump(rf_random, os.path.join(args.model_dir, "model.joblib"))
     # joblib.dump(le_storetype, os.path.join(args.model_dir, 'le_storetype.joblib'))
     # joblib.dump(le_assortment, os.path.join(args.model_dir, 'le_assortment.joblib'))
-    # test_data.to_csv(os.path.join(args.model_dir,"test.csv"), index=False)
+    test_data.to_csv(os.path.join(args.model_dir, "test.csv"), index=False)
     logger.info(f"Saving model to {args.model_dir}...")
